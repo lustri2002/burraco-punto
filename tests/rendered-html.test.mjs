@@ -23,15 +23,15 @@ async function render() {
   );
 }
 
-test("renders the Burraco Punto application shell", async () => {
+test("renders the Segnapunti Burraco application shell", async () => {
   const response = await render();
   assert.equal(response.status, 200);
   assert.match(response.headers.get("content-type") ?? "", /^text\/html\b/i);
 
   const html = await response.text();
   assert.match(html, /<html lang="it">/i);
-  assert.match(html, /<title>Burraco Punto — segnapunti per il tuo tavolo<\/title>/i);
-  assert.match(html, /Prepariamo il tavolo/);
+  assert.match(html, /<title>Segnapunti Burraco<\/title>/i);
+  assert.match(html, /Caricamento/);
   assert.match(html, /manifest\.webmanifest/);
   assert.doesNotMatch(html, /codex-preview|Your site is taking shape|SkeletonPreview/i);
 });
@@ -41,7 +41,7 @@ test("ships the offline application manifest", async () => {
     await readFile(new URL("../public/manifest.webmanifest", import.meta.url), "utf8"),
   );
 
-  assert.equal(manifest.name, "Burraco Punto");
+  assert.equal(manifest.name, "Segnapunti Burraco");
   assert.equal(manifest.display, "standalone");
   assert.equal(manifest.start_url, "/");
   assert.equal(manifest.lang, "it");

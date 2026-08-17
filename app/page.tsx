@@ -275,20 +275,10 @@ function Setup({ onStart }: { onStart: (game: Game) => void }) {
   return (
     <main className="setup-shell">
       <section className="setup-copy">
-        <p className="eyebrow">Segnapunti per le sere d’estate</p>
-        <h1>
-          Le carte sul tavolo.<br />
-          <em>I conti a noi.</em>
-        </h1>
+        <h1>Segnapunti Burraco</h1>
         <p className="setup-lede">
-          Conta carte, burraco e penalità con pochi tocchi. La classifica si
-          aggiorna da sola, smazzata dopo smazzata.
+          Inserisci le coppie e inizia una nuova partita.
         </p>
-        <div className="setup-promise" aria-label="Caratteristiche">
-          <span>Funziona offline</span>
-          <span>Nessun account</span>
-          <span>Zero pubblicità</span>
-        </div>
       </section>
 
       <form
@@ -307,11 +297,7 @@ function Setup({ onStart }: { onStart: (game: Game) => void }) {
         }}
       >
         <div className="setup-card-heading">
-          <span className="card-suit" aria-hidden="true">♣</span>
-          <div>
-            <p className="eyebrow">Nuova partita</p>
-            <h2>Chi si sfida?</h2>
-          </div>
+          <h2>Nuova partita</h2>
         </div>
 
         <div className="team-setup team-setup--a">
@@ -379,7 +365,7 @@ function Setup({ onStart }: { onStart: (game: Game) => void }) {
         <button className="primary-button" type="submit">
           Inizia la partita <span aria-hidden="true">→</span>
         </button>
-        <p className="local-note">I dati restano soltanto su questo dispositivo.</p>
+        <p className="local-note">Partita e storico vengono salvati su questo dispositivo.</p>
       </form>
     </main>
   );
@@ -443,7 +429,7 @@ function RoundEditor({
     <div className="round-editor">
       <div className="editor-intro">
         <div>
-          <p className="eyebrow">Smazzata in corso</p>
+          <p className="eyebrow">Conteggio smazzata</p>
           <h2>{team.name}</h2>
           {team.players && <p>{team.players}</p>}
         </div>
@@ -579,9 +565,8 @@ function History({
   return (
     <div className="history-view">
       <section className="history-hero">
-        <p className="eyebrow">Diario della partita</p>
-        <h2>{game.rounds.length ? `${game.rounds.length} smazzate giocate` : "Si parte da zero"}</h2>
-        <p>Ogni punteggio resta salvato su questo dispositivo.</p>
+        <h2>Storico partita</h2>
+        <p>{game.rounds.length ? `${game.rounds.length} smazzate registrate` : "Nessuna smazzata registrata"}</p>
       </section>
 
       {game.rounds.length === 0 ? (
@@ -633,8 +618,7 @@ function History({
         <section className="archive-section">
           <div className="section-heading">
             <div>
-              <p className="eyebrow">Partite precedenti</p>
-              <h3>Archivio del tavolo</h3>
+              <h3>Partite precedenti</h3>
             </div>
           </div>
           {archive.slice(0, 5).map((archivedGame) => {
@@ -671,9 +655,8 @@ function Rules() {
   return (
     <div className="rules-view">
       <section className="history-hero">
-        <p className="eyebrow">Come facciamo i conti</p>
-        <h2>Regole chiare, niente discussioni.</h2>
-        <p>Il profilo predefinito segue il Codice di gara FITAB.</p>
+        <h2>Regole di calcolo</h2>
+        <p>Valori predefiniti basati sul Codice di gara FITAB.</p>
       </section>
 
       <section className="rules-card">
@@ -766,7 +749,7 @@ export default function Home() {
     return (
       <main className="loading-shell" role="status">
         <span className="brand-mark" aria-hidden="true">B<span>•</span></span>
-        <p>Prepariamo il tavolo…</p>
+        <p>Caricamento…</p>
       </main>
     );
   }
@@ -775,9 +758,9 @@ export default function Home() {
     return (
       <>
         <header className="landing-header">
-          <a className="brand" href="#top" aria-label="Burraco Punto, home">
-            <span className="brand-mark" aria-hidden="true">B<span>•</span></span>
-            <span>Burraco <b>Punto</b></span>
+          <a className="brand" href="#top" aria-label="Segnapunti Burraco, home">
+            <span className="brand-mark" aria-hidden="true">B</span>
+            <span>Segnapunti Burraco</span>
           </a>
         </header>
         <Setup
@@ -852,9 +835,9 @@ export default function Home() {
   return (
     <div className="app-shell">
       <header className="app-header">
-        <a className="brand" href="#top" aria-label="Burraco Punto, torna in alto">
-          <span className="brand-mark" aria-hidden="true">B<span>•</span></span>
-          <span>Burraco <b>Punto</b></span>
+        <a className="brand" href="#top" aria-label="Segnapunti Burraco, torna in alto">
+          <span className="brand-mark" aria-hidden="true">B</span>
+          <span>Segnapunti Burraco</span>
         </a>
         <span className="round-pill">Smazzata {game.rounds.length + 1}</span>
       </header>
@@ -872,10 +855,8 @@ export default function Home() {
 
         {winnerIndex !== null && (
           <section className="winner-banner" role="status">
-            <span aria-hidden="true">★</span>
             <div>
-              <strong>{game.teams[winnerIndex].name} ha superato {formatScore(game.target)}!</strong>
-              <p>Potete archiviare la partita oppure continuare a giocare.</p>
+              <strong>{game.teams[winnerIndex].name} ha raggiunto {formatScore(game.target)} punti.</strong>
             </div>
             <button type="button" onClick={finishGame}>Archivia</button>
           </section>
@@ -912,7 +893,7 @@ export default function Home() {
             <div className="save-bar">
               <p>
                 <span aria-hidden="true">✓</span>
-                La bozza viene salvata a ogni tocco
+                Bozza salvata automaticamente
               </p>
               <button type="button" className="primary-button" disabled={!canSave} onClick={saveRound}>
                 Salva smazzata <span aria-hidden="true">→</span>

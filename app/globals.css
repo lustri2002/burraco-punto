@@ -67,10 +67,6 @@ button {
   letter-spacing: -0.02em;
 }
 
-.brand b {
-  color: var(--coral);
-}
-
 .brand-mark {
   width: 38px;
   height: 38px;
@@ -79,29 +75,20 @@ button {
   border-radius: 12px;
   background: var(--green);
   color: #fffdf8;
-  font-family: Georgia, serif;
-  font-size: 22px;
+  font-size: 18px;
   font-weight: 700;
   box-shadow: 0 6px 16px rgba(21, 63, 50, 0.2);
 }
 
-.brand-mark span {
-  color: var(--coral);
-}
-
 .setup-shell {
-  width: min(1180px, calc(100% - 40px));
+  width: min(620px, calc(100% - 40px));
   min-height: calc(100vh - 110px);
   margin: 0 auto;
-  padding: 54px 0 90px;
-  display: grid;
-  grid-template-columns: minmax(0, 1.05fr) minmax(400px, 0.75fr);
-  gap: clamp(60px, 9vw, 130px);
-  align-items: center;
+  padding: 42px 0 90px;
 }
 
 .setup-copy {
-  padding-bottom: 60px;
+  padding-bottom: 24px;
 }
 
 .eyebrow {
@@ -114,67 +101,31 @@ button {
 }
 
 .setup-copy h1 {
-  max-width: 750px;
   margin: 0;
-  font-family: Georgia, "Times New Roman", serif;
-  font-size: clamp(52px, 7vw, 92px);
-  font-weight: 500;
-  line-height: 0.95;
-  letter-spacing: -0.055em;
-}
-
-.setup-copy h1 em {
-  color: var(--coral);
-  font-weight: 500;
+  font-size: 34px;
+  font-weight: 750;
+  line-height: 1.15;
+  letter-spacing: -0.035em;
 }
 
 .setup-lede {
-  max-width: 570px;
-  margin: 30px 0 26px;
+  margin: 8px 0 0;
   color: var(--ink-soft);
-  font-size: 19px;
+  font-size: 15px;
   line-height: 1.55;
-}
-
-.setup-promise {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 10px;
-}
-
-.setup-promise span {
-  padding: 8px 12px;
-  border: 1px solid var(--line);
-  border-radius: 999px;
-  background: rgba(255, 253, 248, 0.55);
-  color: var(--ink-soft);
-  font-size: 12px;
-  font-weight: 700;
 }
 
 .setup-card {
   position: relative;
   padding: 30px;
   border: 1px solid rgba(21, 63, 50, 0.13);
-  border-radius: 28px;
+  border-radius: 18px;
   background: var(--surface);
-  box-shadow: var(--shadow);
-}
-
-.setup-card::before {
-  content: "";
-  position: absolute;
-  inset: 8px;
-  border: 1px solid rgba(21, 63, 50, 0.07);
-  border-radius: 21px;
-  pointer-events: none;
+  box-shadow: 0 10px 32px rgba(29, 49, 40, 0.07);
 }
 
 .setup-card-heading {
   position: relative;
-  display: flex;
-  align-items: center;
-  gap: 14px;
   margin-bottom: 25px;
 }
 
@@ -190,17 +141,6 @@ button {
   font-size: 30px;
   font-weight: 500;
   letter-spacing: -0.03em;
-}
-
-.card-suit {
-  width: 48px;
-  height: 48px;
-  display: grid;
-  place-items: center;
-  border-radius: 50%;
-  background: var(--green-light);
-  color: var(--green);
-  font-size: 26px;
 }
 
 .team-setup {
@@ -481,17 +421,12 @@ a:focus-visible {
   margin-top: 14px;
   padding: 15px 17px;
   display: grid;
-  grid-template-columns: auto 1fr auto;
+  grid-template-columns: 1fr auto;
   gap: 13px;
   align-items: center;
   border-radius: 15px;
   background: var(--green);
   color: white;
-}
-
-.winner-banner > span {
-  color: #ffd56e;
-  font-size: 22px;
 }
 
 .winner-banner strong {
@@ -1194,23 +1129,7 @@ a:focus-visible {
 }
 
 @media (max-width: 800px) {
-  .setup-shell {
-    grid-template-columns: 1fr;
-    gap: 35px;
-    padding-top: 25px;
-  }
-
-  .setup-copy {
-    padding: 18px 0 0;
-  }
-
-  .setup-copy h1 {
-    font-size: clamp(48px, 14vw, 72px);
-  }
-
-  .setup-lede {
-    font-size: 16px;
-  }
+  .setup-shell { padding-top: 28px; }
 }
 
 @media (max-width: 620px) {
@@ -1229,10 +1148,7 @@ a:focus-visible {
     padding-top: 20px;
   }
 
-  .setup-copy h1 {
-    font-size: 48px;
-    line-height: 0.98;
-  }
+  .setup-copy h1 { font-size: 30px; }
 
   .setup-card {
     padding: 23px 18px;
