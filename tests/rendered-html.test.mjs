@@ -46,3 +46,10 @@ test("ships the offline application manifest", async () => {
   assert.equal(manifest.start_url, "/");
   assert.equal(manifest.lang, "it");
 });
+
+test("supports flexible tables and downloadable summaries", async () => {
+  const page = await readFile(new URL("../app/page.tsx", import.meta.url), "utf8");
+  assert.match(page, /"1v1" \| "2v2" \| "1v1v1"/);
+  assert.match(page, /Scarica riepilogo/);
+  assert.match(page, /canvas\.toDataURL\("image\/png"\)/);
+});

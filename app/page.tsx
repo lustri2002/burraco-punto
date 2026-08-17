@@ -7,6 +7,8 @@ type Team = {
   players: string;
 };
 
+type GameMode = "1v1" | "2v2" | "1v1v1";
+
 type CardCounts = {
   five: number;
   ten: number;
@@ -37,17 +39,18 @@ type Breakdown = {
 type Round = {
   id: string;
   createdAt: string;
-  scores: [number, number];
-  breakdowns: [Breakdown, Breakdown];
+  scores: number[];
+  breakdowns: Breakdown[];
 };
 
 type Game = {
   id: string;
   createdAt: string;
+  mode: GameMode;
   target: number;
-  teams: [Team, Team];
+  teams: Team[];
   rounds: Round[];
-  draft: [Breakdown, Breakdown];
+  draft: Breakdown[];
 };
 
 const ACTIVE_GAME_KEY = "burraco-punto-active-v1";
@@ -163,17 +166,30 @@ function formatScore(score: number) {
   return new Intl.NumberFormat("it-IT").format(score);
 }
 
-function makeGame(
-  teams: [Team, Team],
-  target: number,
-): Game {
+function defaultTeams(mode: GameMode): Team[] {
+  if (mode === "2v2") {
+    return [
+      { name: "Coppia A", players: "" },
+      { name: "Coppia B", players: "" },
+    ];
+  }
+
+  const count = mode === "1v1v1" ? 3 : 2;
+  return Array.from({ length: count }, (_, index) => ({
+    name: `Giocatore ${index + 1}`,
+    players: "",
+  }));
+}
+
+function makeGame(mode: GameMode, teams: Team[], target: number): Game {
   return {
     id: crypto.randomUUID(),
     createdAt: new Date().toISOString(),
+    mode,
     target,
     teams,
     rounds: [],
-    draft: [emptyBreakdown(), emptyBreakdown()],
+    draft: teams.map(() => emptyBreakdown()),
   };
 }
 
@@ -184,6 +200,156 @@ function readJson<T>(key: string, fallback: T): T {
   } catch {
     return fallback;
   }
+}
+
+function normalizeGame(game: Game | null): Game | null {
+  if (!game || !Array.isArray(game.teams) || game.teams.length < 2) return null;
+  const mode: GameMode =
+    game.mode ??
+    (game.teams.length === 3
+      ? "1v1v1"
+      : game.teams.some((team) => team.players || /^coppia\b/i.test(team.name))
+        ? "2v2"
+        : "1v1");
+  return {
+    ...game,
+    mode,
+    draft: game.teams.map((_, index) => game.draft?.[index] ?? emptyBreakdown()),
+    rounds: (game.rounds ?? []).map((round) => ({
+      ...round,
+      scores: game.teams.map((_, index) => round.scores?.[index] ?? 0),
+      breakdowns: game.teams.map(
+        (_, index) => round.breakdowns?.[index] ?? emptyBreakdown(),
+      ),
+    })),
+  };
+}
+
+function getGameTotals(game: Game): number[] {
+  return game.rounds.reduce<number[]>(
+    (totals, round) => totals.map((total, index) => total + (round.scores[index] ?? 0)),
+    game.teams.map(() => 0),
+  );
+}
+
+function safeFilename(value: string) {
+  return value
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-|-$/g, "");
+}
+
+function drawRoundedRect(
+  context: CanvasRenderingContext2D,
+  x: number,
+  y: number,
+  width: number,
+  height: number,
+  radius: number,
+) {
+  context.beginPath();
+  context.roundRect(x, y, width, height, radius);
+  context.fill();
+}
+
+function downloadGameSummary(game: Game) {
+  const totals = getGameTotals(game);
+  const width = 1080;
+  const rowHeight = 62;
+  const height = Math.max(1350, 650 + game.rounds.length * rowHeight);
+  const canvas = document.createElement("canvas");
+  canvas.width = width;
+  canvas.height = height;
+  const context = canvas.getContext("2d");
+  if (!context) return;
+
+  const colors = ["#153f32", "#e96049", "#c8942d"];
+  context.fillStyle = "#f4efe5";
+  context.fillRect(0, 0, width, height);
+
+  context.fillStyle = "#153f32";
+  context.fillRect(0, 0, width, 250);
+  context.fillStyle = "#ffffff";
+  context.font = "700 58px system-ui, sans-serif";
+  context.fillText("Segnapunti Burraco", 70, 100);
+  context.font = "400 28px system-ui, sans-serif";
+  context.fillStyle = "rgba(255,255,255,.72)";
+  const date = new Intl.DateTimeFormat("it-IT", {
+    day: "numeric",
+    month: "long",
+    year: "numeric",
+  }).format(new Date(game.createdAt));
+  context.fillText(`${date} · ${game.mode} · obiettivo ${formatScore(game.target)}`, 70, 158);
+  context.fillText(`${game.rounds.length} smazzate`, 70, 205);
+
+  const gap = 18;
+  const cardWidth = (width - 140 - gap * (game.teams.length - 1)) / game.teams.length;
+  game.teams.forEach((team, index) => {
+    const x = 70 + index * (cardWidth + gap);
+    context.fillStyle = "#fffdf8";
+    drawRoundedRect(context, x, 300, cardWidth, 210, 26);
+    context.fillStyle = colors[index] ?? colors[0];
+    context.fillRect(x, 300, cardWidth, 12);
+    context.font = "700 25px system-ui, sans-serif";
+    context.fillText(team.name.slice(0, 20), x + 24, 365, cardWidth - 48);
+    if (team.players) {
+      context.fillStyle = "#68776f";
+      context.font = "400 18px system-ui, sans-serif";
+      context.fillText(team.players.slice(0, 28), x + 24, 398, cardWidth - 48);
+    }
+    context.fillStyle = "#17352c";
+    context.font = "700 62px system-ui, sans-serif";
+    context.fillText(formatScore(totals[index]), x + 24, 475, cardWidth - 48);
+  });
+
+  const top = 580;
+  const labelWidth = 130;
+  const scoreWidth = (width - 140 - labelWidth) / game.teams.length;
+  context.fillStyle = "#17352c";
+  context.font = "700 30px system-ui, sans-serif";
+  context.fillText("Smazzate", 70, top - 24);
+  context.font = "700 18px system-ui, sans-serif";
+  context.fillStyle = "#68776f";
+  game.teams.forEach((team, index) => {
+    context.textAlign = "right";
+    context.fillText(team.name.slice(0, 14), 70 + labelWidth + scoreWidth * (index + 1) - 10, top + 22);
+  });
+  context.textAlign = "left";
+
+  game.rounds.forEach((round, roundIndex) => {
+    const y = top + 48 + roundIndex * rowHeight;
+    if (roundIndex % 2 === 0) {
+      context.fillStyle = "#ebe5da";
+      drawRoundedRect(context, 70, y - 35, width - 140, 52, 10);
+    }
+    context.fillStyle = "#68776f";
+    context.font = "600 19px system-ui, sans-serif";
+    context.fillText(`#${roundIndex + 1}`, 88, y);
+    round.scores.forEach((score, index) => {
+      context.fillStyle = "#17352c";
+      context.font = "700 22px system-ui, sans-serif";
+      context.textAlign = "right";
+      context.fillText(
+        `${score > 0 ? "+" : ""}${formatScore(score)}`,
+        70 + labelWidth + scoreWidth * (index + 1) - 10,
+        y,
+      );
+    });
+    context.textAlign = "left";
+  });
+
+  context.fillStyle = "#68776f";
+  context.font = "400 18px system-ui, sans-serif";
+  context.fillText("Generato con Segnapunti Burraco", 70, height - 60);
+
+  const link = document.createElement("a");
+  link.href = canvas.toDataURL("image/png");
+  link.download = `burraco-${safeFilename(game.teams.map((team) => team.name).join("-")) || "partita"}.png`;
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
 }
 
 function Stepper({
@@ -267,10 +433,29 @@ function CardCounter({
   );
 }
 
-function Setup({ onStart }: { onStart: (game: Game) => void }) {
-  const [teamA, setTeamA] = useState<Team>({ name: "Coppia A", players: "" });
-  const [teamB, setTeamB] = useState<Team>({ name: "Coppia B", players: "" });
+function Setup({
+  archive,
+  onStart,
+}: {
+  archive: Game[];
+  onStart: (game: Game) => void;
+}) {
+  const [mode, setMode] = useState<GameMode>("2v2");
+  const [teams, setTeams] = useState<Team[]>(defaultTeams("2v2"));
   const [target, setTarget] = useState(2005);
+
+  function changeMode(nextMode: GameMode) {
+    setMode(nextMode);
+    setTeams(defaultTeams(nextMode));
+  }
+
+  function updateTeam(index: number, patch: Partial<Team>) {
+    setTeams((current) =>
+      current.map((team, teamIndex) =>
+        teamIndex === index ? { ...team, ...patch } : team,
+      ),
+    );
+  }
 
   return (
     <main className="setup-shell">
@@ -287,10 +472,13 @@ function Setup({ onStart }: { onStart: (game: Game) => void }) {
           event.preventDefault();
           onStart(
             makeGame(
-              [
-                { ...teamA, name: teamA.name.trim() || "Coppia A" },
-                { ...teamB, name: teamB.name.trim() || "Coppia B" },
-              ],
+              mode,
+              teams.map((team, index) => ({
+                ...team,
+                name:
+                  team.name.trim() ||
+                  (mode === "2v2" ? `Coppia ${String.fromCharCode(65 + index)}` : `Giocatore ${index + 1}`),
+              })),
               target,
             ),
           );
@@ -300,50 +488,53 @@ function Setup({ onStart }: { onStart: (game: Game) => void }) {
           <h2>Nuova partita</h2>
         </div>
 
-        <div className="team-setup team-setup--a">
-          <label>
-            Nome coppia
-            <input
-              value={teamA.name}
-              onChange={(event) => setTeamA({ ...teamA, name: event.target.value })}
-              autoComplete="off"
-            />
-          </label>
-          <label>
-            Giocatori <small>facoltativo</small>
-            <input
-              value={teamA.players}
-              onChange={(event) =>
-                setTeamA({ ...teamA, players: event.target.value })
-              }
-              placeholder="Alessio e Giulia"
-              autoComplete="off"
-            />
-          </label>
-        </div>
+        <fieldset className="mode-choice">
+          <legend>Modalità</legend>
+          <div>
+            {([
+              ["1v1", "1 vs 1"],
+              ["2v2", "2 vs 2"],
+              ["1v1v1", "1 vs 1 vs 1"],
+            ] as Array<[GameMode, string]>).map(([value, label]) => (
+              <button
+                key={value}
+                type="button"
+                className={mode === value ? "selected" : ""}
+                onClick={() => changeMode(value)}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
+        </fieldset>
 
-        <div className="versus" aria-hidden="true"><span>VS</span></div>
-
-        <div className="team-setup team-setup--b">
-          <label>
-            Nome coppia
-            <input
-              value={teamB.name}
-              onChange={(event) => setTeamB({ ...teamB, name: event.target.value })}
-              autoComplete="off"
-            />
-          </label>
-          <label>
-            Giocatori <small>facoltativo</small>
-            <input
-              value={teamB.players}
-              onChange={(event) =>
-                setTeamB({ ...teamB, players: event.target.value })
-              }
-              placeholder="Marco e Sara"
-              autoComplete="off"
-            />
-          </label>
+        <div className="team-setup-list">
+          {teams.map((team, index) => (
+            <div
+              className={`team-setup team-setup--${index}${mode !== "2v2" ? " team-setup--single" : ""}`}
+              key={`${mode}-${index}`}
+            >
+              <label>
+                {mode === "2v2" ? "Nome coppia" : `Giocatore ${index + 1}`}
+                <input
+                  value={team.name}
+                  onChange={(event) => updateTeam(index, { name: event.target.value })}
+                  autoComplete="off"
+                />
+              </label>
+              {mode === "2v2" && (
+                <label>
+                  Componenti <small>facoltativo</small>
+                  <input
+                    value={team.players}
+                    onChange={(event) => updateTeam(index, { players: event.target.value })}
+                    placeholder={index === 0 ? "Alessio e Giulia" : "Marco e Sara"}
+                    autoComplete="off"
+                  />
+                </label>
+              )}
+            </div>
+          ))}
         </div>
 
         <fieldset className="target-choice">
@@ -360,6 +551,17 @@ function Setup({ onStart }: { onStart: (game: Game) => void }) {
               </button>
             ))}
           </div>
+          <label className="custom-target">
+            Oppure inserisci un obiettivo personalizzato
+            <input
+              type="number"
+              inputMode="numeric"
+              min="100"
+              step="5"
+              value={target}
+              onChange={(event) => setTarget(Math.max(100, Number(event.target.value) || 100))}
+            />
+          </label>
         </fieldset>
 
         <button className="primary-button" type="submit">
@@ -367,6 +569,27 @@ function Setup({ onStart }: { onStart: (game: Game) => void }) {
         </button>
         <p className="local-note">Partita e storico vengono salvati su questo dispositivo.</p>
       </form>
+
+      {archive.length > 0 && (
+        <section className="setup-archive">
+          <h2>Partite precedenti</h2>
+          {archive.slice(0, 5).map((archivedGame) => (
+            <div className="archive-row" key={archivedGame.id}>
+              <div>
+                <strong>{archivedGame.teams.map((team) => team.name).join(" · ")}</strong>
+                <small>{getGameTotals(archivedGame).map(formatScore).join(" — ")}</small>
+              </div>
+              <button
+                type="button"
+                className="download-button"
+                onClick={() => downloadGameSummary(archivedGame)}
+              >
+                Scarica PNG
+              </button>
+            </div>
+          ))}
+        </section>
+      )}
     </main>
   );
 }
@@ -378,30 +601,32 @@ function Scoreboard({
   onSelect,
 }: {
   game: Game;
-  totals: [number, number];
-  activeTeam: 0 | 1;
-  onSelect: (team: 0 | 1) => void;
+  totals: number[];
+  activeTeam: number;
+  onSelect: (team: number) => void;
 }) {
   return (
-    <section className="scoreboard" aria-label="Punteggio della partita">
+    <section
+      className={`scoreboard scoreboard--${game.teams.length}`}
+      aria-label="Punteggio della partita"
+    >
       {game.teams.map((team, index) => {
-        const teamIndex = index as 0 | 1;
         const progress = Math.max(
           0,
-          Math.min(100, (totals[teamIndex] / game.target) * 100),
+          Math.min(100, (totals[index] / game.target) * 100),
         );
         return (
           <button
             type="button"
-            className={`score-team score-team--${teamIndex === 0 ? "a" : "b"}${
-              activeTeam === teamIndex ? " active" : ""
+            className={`score-team score-team--${index}${
+              activeTeam === index ? " active" : ""
             }`}
-            key={team.name}
-            onClick={() => onSelect(teamIndex)}
-            aria-pressed={activeTeam === teamIndex}
+            key={`${team.name}-${index}`}
+            onClick={() => onSelect(index)}
+            aria-pressed={activeTeam === index}
           >
             <span className="score-team-name">{team.name}</span>
-            <strong>{formatScore(totals[teamIndex])}</strong>
+            <strong>{formatScore(totals[index])}</strong>
             <span className="score-target">su {formatScore(game.target)}</span>
             <span className="progress-track" aria-hidden="true">
               <span style={{ width: `${progress}%` }} />
@@ -458,7 +683,7 @@ function RoundEditor({
         <div className="section-heading">
           <div>
             <h3>Burraco</h3>
-            <p>Aggiungi quelli completati dalla coppia.</p>
+            <p>Aggiungi quelli completati.</p>
           </div>
           <strong className="positive">+{bonusPoints}</strong>
         </div>
@@ -545,18 +770,15 @@ function History({
   onFinish,
 }: {
   game: Game;
-  totals: [number, number];
+  totals: number[];
   archive: Game[];
   onUndo: () => void;
   onFinish: () => void;
 }) {
-  const cumulative = game.rounds.reduce<Array<[number, number]>>(
+  const cumulative = game.rounds.reduce<number[][]>(
     (items, round) => {
-      const previous = items.at(-1) ?? [0, 0];
-      items.push([
-        previous[0] + round.scores[0],
-        previous[1] + round.scores[1],
-      ]);
+      const previous = items.at(-1) ?? game.teams.map(() => 0);
+      items.push(previous.map((score, index) => score + (round.scores[index] ?? 0)));
       return items;
     },
     [],
@@ -577,24 +799,28 @@ function History({
         </div>
       ) : (
         <section className="round-list" aria-label="Storico smazzate">
-          <div className="round-list-head">
+          <div
+            className="round-list-head"
+            style={{ gridTemplateColumns: `0.55fr repeat(${game.teams.length}, 1fr)` }}
+          >
             <span>Smazzata</span>
-            <span>{game.teams[0].name}</span>
-            <span>{game.teams[1].name}</span>
+            {game.teams.map((team, index) => <span key={`${team.name}-${index}`}>{team.name}</span>)}
           </div>
           {[...game.rounds].reverse().map((round, reversedIndex) => {
             const originalIndex = game.rounds.length - 1 - reversedIndex;
             return (
-              <div className="round-row" key={round.id}>
+              <div
+                className="round-row"
+                key={round.id}
+                style={{ gridTemplateColumns: `0.55fr repeat(${game.teams.length}, 1fr)` }}
+              >
                 <span>#{originalIndex + 1}</span>
-                <span>
-                  <strong>{round.scores[0] > 0 ? "+" : ""}{round.scores[0]}</strong>
-                  <small>{formatScore(cumulative[originalIndex][0])} tot.</small>
-                </span>
-                <span>
-                  <strong>{round.scores[1] > 0 ? "+" : ""}{round.scores[1]}</strong>
-                  <small>{formatScore(cumulative[originalIndex][1])} tot.</small>
-                </span>
+                {game.teams.map((_, index) => (
+                  <span key={index}>
+                    <strong>{round.scores[index] > 0 ? "+" : ""}{round.scores[index]}</strong>
+                    <small>{formatScore(cumulative[originalIndex][index])} tot.</small>
+                  </span>
+                ))}
               </div>
             );
           })}
@@ -607,11 +833,18 @@ function History({
       <section className="match-summary">
         <div>
           <small>Risultato attuale</small>
-          <strong>{formatScore(totals[0])} — {formatScore(totals[1])}</strong>
+          <strong>{totals.map(formatScore).join(" — ")}</strong>
         </div>
-        <button type="button" className="secondary-button" onClick={onFinish}>
-          Termina e archivia
-        </button>
+        <div className="summary-actions">
+          {game.rounds.length > 0 && (
+            <button type="button" className="download-button" onClick={() => downloadGameSummary(game)}>
+              Scarica riepilogo
+            </button>
+          )}
+          <button type="button" className="secondary-button" onClick={onFinish}>
+            Termina e archivia
+          </button>
+        </div>
       </section>
 
       {archive.length > 0 && (
@@ -622,17 +855,11 @@ function History({
             </div>
           </div>
           {archive.slice(0, 5).map((archivedGame) => {
-            const archivedTotals = archivedGame.rounds.reduce<[number, number]>(
-              (scores, round) => [
-                scores[0] + round.scores[0],
-                scores[1] + round.scores[1],
-              ],
-              [0, 0],
-            );
+            const archivedTotals = getGameTotals(archivedGame);
             return (
               <div className="archive-row" key={archivedGame.id}>
                 <div>
-                  <strong>{archivedGame.teams[0].name} · {archivedGame.teams[1].name}</strong>
+                  <strong>{archivedGame.teams.map((team) => team.name).join(" · ")}</strong>
                   <small>
                     {new Intl.DateTimeFormat("it-IT", {
                       day: "numeric",
@@ -641,7 +868,16 @@ function History({
                     }).format(new Date(archivedGame.createdAt))}
                   </small>
                 </div>
-                <strong>{formatScore(archivedTotals[0])} — {formatScore(archivedTotals[1])}</strong>
+                <div className="archive-result">
+                  <strong>{archivedTotals.map(formatScore).join(" — ")}</strong>
+                  <button
+                    type="button"
+                    className="download-button download-button--small"
+                    onClick={() => downloadGameSummary(archivedGame)}
+                  >
+                    PNG
+                  </button>
+                </div>
               </div>
             );
           })}
@@ -706,13 +942,17 @@ export default function Home() {
   const [hydrated, setHydrated] = useState(false);
   const [game, setGame] = useState<Game | null>(null);
   const [archive, setArchive] = useState<Game[]>([]);
-  const [activeTeam, setActiveTeam] = useState<0 | 1>(0);
+  const [activeTeam, setActiveTeam] = useState(0);
   const [tab, setTab] = useState<"game" | "history" | "rules">("game");
   const [savedMessage, setSavedMessage] = useState(false);
 
   useEffect(() => {
-    setGame(readJson<Game | null>(ACTIVE_GAME_KEY, null));
-    setArchive(readJson<Game[]>(ARCHIVE_KEY, []));
+    setGame(normalizeGame(readJson<Game | null>(ACTIVE_GAME_KEY, null)));
+    setArchive(
+      readJson<Game[]>(ARCHIVE_KEY, [])
+        .map((archivedGame) => normalizeGame(archivedGame))
+        .filter((archivedGame): archivedGame is Game => archivedGame !== null),
+    );
     setHydrated(true);
     if ("serviceWorker" in navigator) {
       navigator.serviceWorker.register("/sw.js").catch(() => undefined);
@@ -734,21 +974,15 @@ export default function Home() {
     }
   }, [archive, hydrated]);
 
-  const totals = useMemo<[number, number]>(() => {
-    if (!game) return [0, 0];
-    return game.rounds.reduce<[number, number]>(
-      (scores, round) => [
-        scores[0] + round.scores[0],
-        scores[1] + round.scores[1],
-      ],
-      [0, 0],
-    );
+  const totals = useMemo<number[]>(() => {
+    if (!game) return [];
+    return getGameTotals(game);
   }, [game]);
 
   if (!hydrated) {
     return (
       <main className="loading-shell" role="status">
-        <span className="brand-mark" aria-hidden="true">B<span>•</span></span>
+        <span className="brand-mark" aria-hidden="true">B</span>
         <p>Caricamento…</p>
       </main>
     );
@@ -764,8 +998,10 @@ export default function Home() {
           </a>
         </header>
         <Setup
+          archive={archive}
           onStart={(newGame) => {
             setGame(newGame);
+            setActiveTeam(0);
             setTab("game");
           }}
         />
@@ -773,23 +1009,17 @@ export default function Home() {
     );
   }
 
-  const draftScores: [number, number] = [
-    calculateScore(game.draft[0]),
-    calculateScore(game.draft[1]),
-  ];
-  const canSave = !isBreakdownEmpty(game.draft[0]) || !isBreakdownEmpty(game.draft[1]);
-  const winnerIndex =
-    totals[0] >= game.target || totals[1] >= game.target
-      ? totals[0] === totals[1]
-        ? null
-        : totals[0] > totals[1]
-          ? 0
-          : 1
-      : null;
+  const draftScores = game.draft.map(calculateScore);
+  const canSave = game.draft.some((breakdown) => !isBreakdownEmpty(breakdown));
+  const highestScore = Math.max(...totals);
+  const leaders = totals
+    .map((score, index) => ({ score, index }))
+    .filter(({ score }) => score === highestScore);
+  const winnerIndex = highestScore >= game.target && leaders.length === 1 ? leaders[0].index : null;
 
-  function updateDraft(teamIndex: 0 | 1, breakdown: Breakdown) {
+  function updateDraft(teamIndex: number, breakdown: Breakdown) {
     if (!game) return;
-    const draft: [Breakdown, Breakdown] = [...game.draft];
+    const draft = [...game.draft];
     draft[teamIndex] = breakdown;
     setGame({ ...game, draft });
   }
@@ -805,7 +1035,7 @@ export default function Home() {
     setGame({
       ...game,
       rounds: [...game.rounds, round],
-      draft: [emptyBreakdown(), emptyBreakdown()],
+      draft: game.teams.map(() => emptyBreakdown()),
     });
     setActiveTeam(0);
     setSavedMessage(true);
@@ -826,7 +1056,8 @@ export default function Home() {
       return;
     }
     if (!window.confirm("Archiviare questa partita e prepararne una nuova?")) return;
-    const finished = { ...game, draft: [emptyBreakdown(), emptyBreakdown()] as [Breakdown, Breakdown] };
+    const finished = { ...game, draft: game.teams.map(() => emptyBreakdown()) };
+    downloadGameSummary(finished);
     setArchive((current) => [finished, ...current].slice(0, 30));
     setGame(null);
     setTab("game");
@@ -878,16 +1109,16 @@ export default function Home() {
               onChange={(breakdown) => updateDraft(activeTeam, breakdown)}
             />
 
-            <section className="round-recap">
-              <div>
-                <span>{game.teams[0].name}</span>
-                <strong>{draftScores[0] > 0 ? "+" : ""}{draftScores[0]}</strong>
-              </div>
-              <span className="recap-divider">questa smazzata</span>
-              <div>
-                <span>{game.teams[1].name}</span>
-                <strong>{draftScores[1] > 0 ? "+" : ""}{draftScores[1]}</strong>
-              </div>
+            <section
+              className="round-recap"
+              style={{ gridTemplateColumns: `repeat(${game.teams.length}, 1fr)` }}
+            >
+              {game.teams.map((team, index) => (
+                <div key={`${team.name}-${index}`}>
+                  <span>{team.name}</span>
+                  <strong>{draftScores[index] > 0 ? "+" : ""}{draftScores[index]}</strong>
+                </div>
+              ))}
             </section>
 
             <div className="save-bar">
