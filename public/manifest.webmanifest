@@ -1,0 +1,11 @@
+{
+  "name": "Burraco Punto",
+  "short_name": "Burraco",
+  "description": "Segnapunti semplice e veloce per le partite di Burraco.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#f4efe5",
+  "theme_color": "#153f32",
+  "lang": "it",
+  "orientation": "portrait-primary"
+}
