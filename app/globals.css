@@ -179,6 +179,103 @@ button {
   background: var(--gold);
 }
 
+.bonus-setup {
+  margin: 26px 0 0;
+  padding: 0;
+  border: 0;
+}
+
+.bonus-setup legend {
+  color: var(--ink);
+  font-size: 14px;
+  font-weight: 800;
+}
+
+.bonus-setup > p {
+  margin: 4px 0 12px;
+  color: var(--ink-soft);
+  font-size: 11px;
+}
+
+.bonus-setup-list {
+  display: grid;
+  gap: 7px;
+}
+
+.bonus-setup-row {
+  min-height: 52px;
+  padding: 7px 9px 7px 12px;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 12px;
+  align-items: center;
+  border: 1px solid #e2dbcf;
+  border-radius: 11px;
+  background: #f5f1e9;
+  opacity: 0.68;
+}
+
+.bonus-setup-row.enabled {
+  border-color: rgba(21, 63, 50, 0.25);
+  background: #fff;
+  opacity: 1;
+}
+
+.bonus-enable {
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  color: var(--ink);
+  cursor: pointer;
+}
+
+.bonus-enable input {
+  width: 19px;
+  height: 19px;
+  flex: 0 0 auto;
+  accent-color: var(--green);
+}
+
+.bonus-enable span {
+  overflow: hidden;
+  font-size: 12px;
+  font-weight: 750;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.bonus-points {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.bonus-points input {
+  width: 78px;
+  height: 36px;
+  padding: 0 9px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  outline: none;
+  background: white;
+  color: var(--ink);
+  font-size: 13px;
+  font-weight: 750;
+  text-align: right;
+}
+
+.bonus-points input:disabled {
+  background: #e9e4da;
+  color: #9b9489;
+}
+
+.bonus-points span {
+  width: 28px;
+  color: var(--ink-soft);
+  font-size: 9px;
+}
+
 label {
   color: var(--ink-soft);
   font-size: 12px;
@@ -404,6 +501,11 @@ a:focus-visible {
 
 .score-team.active {
   border-color: rgba(21, 63, 50, 0.38);
+}
+
+.score-team:disabled {
+  cursor: default;
+  opacity: 1;
 }
 
 .score-team--1.active {
@@ -805,6 +907,16 @@ a:focus-visible {
   display: grid;
   grid-template-columns: repeat(2, 1fr);
   gap: 8px;
+}
+
+.no-bonuses {
+  margin: 0;
+  padding: 15px;
+  border: 1px dashed var(--line);
+  border-radius: 11px;
+  color: var(--ink-soft);
+  font-size: 11px;
+  text-align: center;
 }
 
 .bonus-counter {

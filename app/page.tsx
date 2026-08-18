@@ -27,6 +27,11 @@ type BonusCounts = {
   sporco: number;
 };
 
+type BonusRules = Record<
+  keyof BonusCounts,
+  { enabled: boolean; value: number }
+>;
+
 type Breakdown = {
   table: CardCounts;
   hand: CardCounts;
@@ -54,6 +59,7 @@ type Game = {
   rounds: Round[];
   draft: Breakdown[];
   soloPlayer: number;
+  bonusRules: BonusRules;
 };
 
 const ACTIVE_GAME_KEY = "burraco-punto-active-v1";
@@ -102,6 +108,36 @@ const BONUS_VALUES: Array<{
   { key: "sporco", label: "Burraco sporco", short: "Sporco", value: 100 },
 ];
 
+function makeBonusRules(enableAll = false): BonusRules {
+  return Object.fromEntries(
+    BONUS_VALUES.map((bonus) => [
+      bonus.key,
+      {
+        enabled: enableAll || bonus.key === "pulito" || bonus.key === "sporco",
+        value: bonus.value,
+      },
+    ]),
+  ) as BonusRules;
+}
+
+function normalizeBonusRules(rules?: Partial<BonusRules>): BonusRules {
+  const legacyGame = !rules;
+  return Object.fromEntries(
+    BONUS_VALUES.map((bonus) => {
+      const storedRule = rules?.[bonus.key];
+      return [
+        bonus.key,
+        {
+          enabled: storedRule?.enabled ?? legacyGame,
+          value: Number.isFinite(storedRule?.value)
+            ? Math.max(0, storedRule?.value ?? bonus.value)
+            : bonus.value,
+        },
+      ];
+    }),
+  ) as BonusRules;
+}
+
 function emptyCards(): CardCounts {
   return { five: 0, ten: 0, fifteen: 0, twenty: 0, thirty: 0 };
 }
@@ -136,18 +172,28 @@ function pointsForCards(cards: CardCounts) {
   );
 }
 
-function pointsForBonuses(bonuses: BonusCounts) {
+function pointsForBonuses(
+  bonuses: BonusCounts,
+  bonusRules: BonusRules = makeBonusRules(true),
+) {
   return BONUS_VALUES.reduce(
-    (total, bonus) => total + bonuses[bonus.key] * bonus.value,
+    (total, bonus) =>
+      total +
+      (bonusRules[bonus.key].enabled
+        ? bonuses[bonus.key] * bonusRules[bonus.key].value
+        : 0),
     0,
   );
 }
 
-function calculateScore(breakdown: Breakdown) {
+function calculateScore(
+  breakdown: Breakdown,
+  bonusRules: BonusRules = makeBonusRules(true),
+) {
   return (
     pointsForCards(breakdown.table) -
     pointsForCards(breakdown.hand) +
-    pointsForBonuses(breakdown.bonuses) +
+    pointsForBonuses(breakdown.bonuses, bonusRules) +
     (breakdown.closed ? 100 : 0) -
     (breakdown.missedPot ? 100 : 0) +
     breakdown.adjustment
@@ -189,7 +235,12 @@ function defaultTeams(mode: GameMode): Team[] {
   }));
 }
 
-function makeGame(mode: GameMode, teams: Team[], target: number): Game {
+function makeGame(
+  mode: GameMode,
+  teams: Team[],
+  target: number,
+  bonusRules: BonusRules,
+): Game {
   return {
     id: crypto.randomUUID(),
     createdAt: new Date().toISOString(),
@@ -199,6 +250,7 @@ function makeGame(mode: GameMode, teams: Team[], target: number): Game {
     rounds: [],
     draft: Array.from({ length: mode === "3p" ? 2 : teams.length }, () => emptyBreakdown()),
     soloPlayer: 0,
+    bonusRules: normalizeBonusRules(bonusRules),
   };
 }
 
@@ -230,13 +282,15 @@ function normalizeGame(game: Game | null): Game | null {
     ...game,
     mode,
     soloPlayer,
+    bonusRules: normalizeBonusRules(game.bonusRules),
     draft: Array.from({ length: draftLength }, (_, index) =>
       storedMode === "1v1v1" ? emptyBreakdown() : (game.draft?.[index] ?? emptyBreakdown()),
     ),
     rounds: (game.rounds ?? []).map((round) => ({
       ...round,
       scores: game.teams.map((_, index) => round.scores?.[index] ?? 0),
-      breakdowns: game.teams.map(
+      breakdowns: Array.from(
+        { length: draftLength },
         (_, index) => round.breakdowns?.[index] ?? emptyBreakdown(),
       ),
     })),
@@ -485,6 +539,7 @@ function Setup({
   const [mode, setMode] = useState<GameMode>("2v2");
   const [teams, setTeams] = useState<Team[]>(defaultTeams("2v2"));
   const [target, setTarget] = useState(2005);
+  const [bonusRules, setBonusRules] = useState<BonusRules>(() => makeBonusRules());
 
   function changeMode(nextMode: GameMode) {
     setMode(nextMode);
@@ -522,6 +577,7 @@ function Setup({
                   (mode === "2v2" ? `Coppia ${String.fromCharCode(65 + index)}` : `Giocatore ${index + 1}`),
               })),
               target,
+              bonusRules,
             ),
           );
         }}
@@ -584,6 +640,54 @@ function Setup({
             </div>
           ))}
         </div>
+
+        <fieldset className="bonus-setup">
+          <legend>Tipi di burraco</legend>
+          <p>Attiva quelli che usate e imposta il relativo punteggio.</p>
+          <div className="bonus-setup-list">
+            {BONUS_VALUES.map((bonus) => {
+              const rule = bonusRules[bonus.key];
+              return (
+                <div className={`bonus-setup-row${rule.enabled ? " enabled" : ""}`} key={bonus.key}>
+                  <label className="bonus-enable">
+                    <input
+                      type="checkbox"
+                      checked={rule.enabled}
+                      onChange={(event) =>
+                        setBonusRules((current) => ({
+                          ...current,
+                          [bonus.key]: { ...current[bonus.key], enabled: event.target.checked },
+                        }))
+                      }
+                    />
+                    <span>{bonus.label}</span>
+                  </label>
+                  <label className="bonus-points">
+                    <input
+                      type="number"
+                      inputMode="numeric"
+                      min="0"
+                      step="5"
+                      disabled={!rule.enabled}
+                      value={rule.value}
+                      aria-label={`Punti per ${bonus.label}`}
+                      onChange={(event) =>
+                        setBonusRules((current) => ({
+                          ...current,
+                          [bonus.key]: {
+                            ...current[bonus.key],
+                            value: Math.max(0, Number(event.target.value) || 0),
+                          },
+                        }))
+                      }
+                    />
+                    <span>punti</span>
+                  </label>
+                </div>
+              );
+            })}
+          </div>
+        </fieldset>
 
         <fieldset className="target-choice">
           <legend>Si gioca fino a</legend>
@@ -671,7 +775,8 @@ function Scoreboard({
             }`}
             key={`${team.name}-${index}`}
             onClick={() => onSelect(index)}
-            aria-pressed={activeTeam === index}
+            disabled={game.mode === "3p"}
+            aria-pressed={game.mode === "3p" ? undefined : activeTeam === index}
           >
             <span className="score-team-name">{team.name}</span>
             <strong>{formatScore(totals[index])}</strong>
@@ -689,14 +794,19 @@ function Scoreboard({
 function RoundEditor({
   team,
   breakdown,
+  bonusRules,
   onChange,
 }: {
   team: Team;
   breakdown: Breakdown;
+  bonusRules: BonusRules;
   onChange: (breakdown: Breakdown) => void;
 }) {
-  const score = calculateScore(breakdown);
-  const bonusPoints = pointsForBonuses(breakdown.bonuses);
+  const score = calculateScore(breakdown, bonusRules);
+  const bonusPoints = pointsForBonuses(breakdown.bonuses, bonusRules);
+  const enabledBonuses = BONUS_VALUES.filter(
+    (bonus) => bonusRules[bonus.key].enabled,
+  );
 
   return (
     <div className="round-editor">
@@ -736,11 +846,11 @@ function RoundEditor({
           <strong className="positive">+{bonusPoints}</strong>
         </div>
         <div className="bonus-grid">
-          {BONUS_VALUES.map((bonus) => (
+          {enabledBonuses.map((bonus) => (
             <div className="bonus-counter" key={bonus.key}>
               <div>
                 <span>{bonus.short}</span>
-                <small>+{bonus.value}</small>
+                <small>+{bonusRules[bonus.key].value}</small>
               </div>
               <Stepper
                 compact
@@ -756,6 +866,9 @@ function RoundEditor({
             </div>
           ))}
         </div>
+        {enabledBonuses.length === 0 && (
+          <p className="no-bonuses">Nessun tipo di burraco attivo per questa partita.</p>
+        )}
       </section>
 
       <section className="count-section switches-section">
@@ -940,12 +1053,12 @@ function History({
   );
 }
 
-function Rules({ mode }: { mode: GameMode }) {
+function Rules({ mode, bonusRules }: { mode: GameMode; bonusRules: BonusRules }) {
   return (
     <div className="rules-view">
       <section className="history-hero">
         <h2>Regole di calcolo</h2>
-        <p>Valori predefiniti basati sul Codice di gara FITAB.</p>
+        <p>Valori configurati per questa partita.</p>
       </section>
 
       <section className="rules-card">
@@ -984,8 +1097,11 @@ function Rules({ mode }: { mode: GameMode }) {
       <section className="rules-card">
         <h3>Bonus burraco</h3>
         <div className="bonus-rules">
-          {BONUS_VALUES.map((bonus) => (
-            <div key={bonus.key}><span>{bonus.label}</span><strong>+{bonus.value}</strong></div>
+          {BONUS_VALUES.filter((bonus) => bonusRules[bonus.key].enabled).map((bonus) => (
+            <div key={bonus.key}>
+              <span>{bonus.label}</span>
+              <strong>+{bonusRules[bonus.key].value}</strong>
+            </div>
           ))}
           <div><span>Chiusura</span><strong>+100</strong></div>
           <div><span>Pozzetto non preso</span><strong>−100</strong></div>
@@ -1077,7 +1193,9 @@ export default function Home() {
     );
   }
 
-  const sideDraftScores = game.draft.map(calculateScore);
+  const sideDraftScores = game.draft.map((breakdown) =>
+    calculateScore(breakdown, game.bonusRules),
+  );
   const draftScores = game.mode === "3p"
     ? distributeThreePlayerScores(game, sideDraftScores)
     : sideDraftScores;
@@ -1171,13 +1289,9 @@ export default function Home() {
         <Scoreboard
           game={game}
           totals={totals}
-          activeTeam={game.mode === "3p" ? game.soloPlayer : activeTeam}
+          activeTeam={game.mode === "3p" ? -1 : activeTeam}
           onSelect={(team) => {
-            if (game.mode === "3p") {
-              selectSoloPlayer(team);
-              setTab("game");
-              return;
-            }
+            if (game.mode === "3p") return;
             setActiveTeam(team);
             setTab("game");
           }}
@@ -1244,6 +1358,7 @@ export default function Home() {
             <RoundEditor
               team={game.mode === "3p" ? getThreePlayerSides(game)[activeTeam] : game.teams[activeTeam]}
               breakdown={game.draft[activeTeam]}
+              bonusRules={game.bonusRules}
               onChange={(breakdown) => updateDraft(activeTeam, breakdown)}
             />
 
@@ -1289,7 +1404,7 @@ export default function Home() {
           />
         )}
 
-        {tab === "rules" && <Rules mode={game.mode} />}
+        {tab === "rules" && <Rules mode={game.mode} bonusRules={game.bonusRules} />}
       </main>
 
       {savedMessage && (

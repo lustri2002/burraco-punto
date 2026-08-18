@@ -56,3 +56,11 @@ test("supports flexible tables, the 18 + 11 mode, and downloadable summaries", a
   assert.match(page, /Scarica riepilogo/);
   assert.match(page, /canvas\.toDataURL\("image\/png"\)/);
 });
+
+test("supports configurable burraco bonuses without changing the solo player from the scoreboard", async () => {
+  const page = await readFile(new URL("../app/page.tsx", import.meta.url), "utf8");
+  assert.match(page, /bonus\.key === "pulito" \|\| bonus\.key === "sporco"/);
+  assert.match(page, /Attiva quelli che usate e imposta il relativo punteggio/);
+  assert.match(page, /disabled=\{game\.mode === "3p"\}/);
+  assert.match(page, /calculateScore\(breakdown, game\.bonusRules\)/);
+});
