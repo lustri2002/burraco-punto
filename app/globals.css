@@ -238,11 +238,9 @@ button {
 }
 
 .bonus-enable span {
-  overflow: hidden;
   font-size: 12px;
   font-weight: 750;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  line-height: 1.25;
 }
 
 .bonus-points {
@@ -274,6 +272,49 @@ button {
   width: 28px;
   color: var(--ink-soft);
   font-size: 9px;
+}
+
+.bonus-description {
+  grid-column: 1 / -1;
+  padding-top: 1px;
+  border-top: 1px solid transparent;
+}
+
+.bonus-description[open] {
+  margin-top: 2px;
+  padding-top: 8px;
+  border-top-color: #ebe5da;
+}
+
+.bonus-description summary {
+  width: fit-content;
+  color: var(--green);
+  font-size: 10px;
+  font-weight: 800;
+  cursor: pointer;
+  list-style: none;
+}
+
+.bonus-description summary::-webkit-details-marker {
+  display: none;
+}
+
+.bonus-description summary::after {
+  content: "+";
+  margin-left: 6px;
+  font-size: 13px;
+}
+
+.bonus-description[open] summary::after {
+  content: "−";
+}
+
+.bonus-description p {
+  margin: 7px 0 3px;
+  color: var(--ink-soft);
+  font-size: 11px;
+  font-weight: 500;
+  line-height: 1.5;
 }
 
 label {

@@ -83,29 +83,63 @@ const BONUS_VALUES: Array<{
   label: string;
   short: string;
   value: number;
+  description: string;
 }> = [
-  { key: "reale", label: "Burraco reale", short: "Reale", value: 300 },
+  {
+    key: "reale",
+    label: "Burraco reale",
+    short: "Reale",
+    value: 300,
+    description:
+      "Sequenza dall’Asso al Re oppure dal 2 all’Asso, senza matta e con il 2 naturale dello stesso seme.",
+  },
   {
     key: "realeSporco",
     label: "Burraco reale sporco",
     short: "Reale sporco",
     value: 250,
+    description:
+      "Sequenza dall’Asso al Re oppure dal 2 all’Asso, con il 2 naturale dello stesso seme e una matta.",
   },
-  { key: "super", label: "Super burraco", short: "Super", value: 250 },
+  {
+    key: "super",
+    label: "Super burraco",
+    short: "Super",
+    value: 250,
+    description: "Combinazione di otto carte dello stesso valore, senza alcuna matta.",
+  },
   {
     key: "superSporco",
     label: "Super burraco sporco",
     short: "Super sporco",
     value: 200,
+    description:
+      "Combinazione di otto carte dello stesso valore accompagnate da una matta.",
   },
-  { key: "pulito", label: "Burraco pulito", short: "Pulito", value: 200 },
+  {
+    key: "pulito",
+    label: "Burraco pulito",
+    short: "Pulito",
+    value: 200,
+    description:
+      "Almeno sette carte senza matte. La pinella è ammessa soltanto quando vale come 2 naturale.",
+  },
   {
     key: "semipulito",
     label: "Burraco semipulito",
     short: "Semipulito",
     value: 150,
+    description:
+      "Sequenza con una matta prima o dopo almeno sette carte, oppure combinazione di almeno otto carte compresa la matta.",
   },
-  { key: "sporco", label: "Burraco sporco", short: "Sporco", value: 100 },
+  {
+    key: "sporco",
+    label: "Burraco sporco",
+    short: "Sporco",
+    value: 100,
+    description:
+      "Almeno sette carte con una matta che non stia svolgendo il ruolo di 2 naturale.",
+  },
 ];
 
 function makeBonusRules(enableAll = false): BonusRules {
@@ -683,6 +717,10 @@ function Setup({
                     />
                     <span>punti</span>
                   </label>
+                  <details className="bonus-description">
+                    <summary>Che cos’è</summary>
+                    <p>{bonus.description}</p>
+                  </details>
                 </div>
               );
             })}

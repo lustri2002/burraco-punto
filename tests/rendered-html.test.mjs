@@ -61,6 +61,8 @@ test("supports configurable burraco bonuses without changing the solo player fro
   const page = await readFile(new URL("../app/page.tsx", import.meta.url), "utf8");
   assert.match(page, /bonus\.key === "pulito" \|\| bonus\.key === "sporco"/);
   assert.match(page, /Attiva quelli che usate e imposta il relativo punteggio/);
+  assert.match(page, /<details className="bonus-description">/);
+  assert.match(page, /Sequenza dall’Asso al Re oppure dal 2 all’Asso/);
   assert.match(page, /disabled=\{game\.mode === "3p"\}/);
   assert.match(page, /calculateScore\(breakdown, game\.bonusRules\)/);
 });
