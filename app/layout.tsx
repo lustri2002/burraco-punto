@@ -2,15 +2,15 @@ import type { Metadata, Viewport } from "next";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "Segnapunti Burraco",
+  title: "Burraco Punto Online",
   description:
-    "Conta carte, bonus e penalità. Il punteggio della partita di Burraco si aggiorna da solo.",
-  applicationName: "Segnapunti Burraco",
+    "Crea una sessione di Burraco, invita gli amici e sincronizza i punteggi tra più telefoni.",
+  applicationName: "Burraco Punto Online",
   manifest: "/manifest.webmanifest",
   appleWebApp: {
     capable: true,
     statusBarStyle: "black-translucent",
-    title: "Burraco",
+    title: "Burraco Online",
   },
   formatDetection: { telephone: false },
 };
