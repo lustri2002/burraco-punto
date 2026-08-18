@@ -7,7 +7,7 @@ type Team = {
   players: string;
 };
 
-type GameMode = "1v1" | "2v2" | "1v1v1";
+type GameMode = "1v1" | "2v2" | "3p";
 
 type CardCounts = {
   five: number;
@@ -41,6 +41,8 @@ type Round = {
   createdAt: string;
   scores: number[];
   breakdowns: Breakdown[];
+  soloPlayer?: number;
+  sideScores?: number[];
 };
 
 type Game = {
@@ -51,6 +53,7 @@ type Game = {
   teams: Team[];
   rounds: Round[];
   draft: Breakdown[];
+  soloPlayer: number;
 };
 
 const ACTIVE_GAME_KEY = "burraco-punto-active-v1";
@@ -166,6 +169,11 @@ function formatScore(score: number) {
   return new Intl.NumberFormat("it-IT").format(score);
 }
 
+function modeLabel(mode: GameMode) {
+  if (mode === "3p") return "3 giocatori · 18 + 11";
+  return mode === "2v2" ? "2 vs 2" : "1 vs 1";
+}
+
 function defaultTeams(mode: GameMode): Team[] {
   if (mode === "2v2") {
     return [
@@ -174,7 +182,7 @@ function defaultTeams(mode: GameMode): Team[] {
     ];
   }
 
-  const count = mode === "1v1v1" ? 3 : 2;
+  const count = mode === "3p" ? 3 : 2;
   return Array.from({ length: count }, (_, index) => ({
     name: `Giocatore ${index + 1}`,
     players: "",
@@ -189,7 +197,8 @@ function makeGame(mode: GameMode, teams: Team[], target: number): Game {
     target,
     teams,
     rounds: [],
-    draft: teams.map(() => emptyBreakdown()),
+    draft: Array.from({ length: mode === "3p" ? 2 : teams.length }, () => emptyBreakdown()),
+    soloPlayer: 0,
   };
 }
 
@@ -204,17 +213,26 @@ function readJson<T>(key: string, fallback: T): T {
 
 function normalizeGame(game: Game | null): Game | null {
   if (!game || !Array.isArray(game.teams) || game.teams.length < 2) return null;
-  const mode: GameMode =
-    game.mode ??
+  const storedMode = game.mode as GameMode | "1v1v1" | undefined;
+  const mode: GameMode = storedMode === "1v1v1"
+    ? "3p"
+    : storedMode ??
     (game.teams.length === 3
-      ? "1v1v1"
+      ? "3p"
       : game.teams.some((team) => team.players || /^coppia\b/i.test(team.name))
         ? "2v2"
         : "1v1");
+  const draftLength = mode === "3p" ? 2 : game.teams.length;
+  const soloPlayer = Number.isInteger(game.soloPlayer) && game.soloPlayer >= 0 && game.soloPlayer < 3
+    ? game.soloPlayer
+    : 0;
   return {
     ...game,
     mode,
-    draft: game.teams.map((_, index) => game.draft?.[index] ?? emptyBreakdown()),
+    soloPlayer,
+    draft: Array.from({ length: draftLength }, (_, index) =>
+      storedMode === "1v1v1" ? emptyBreakdown() : (game.draft?.[index] ?? emptyBreakdown()),
+    ),
     rounds: (game.rounds ?? []).map((round) => ({
       ...round,
       scores: game.teams.map((_, index) => round.scores?.[index] ?? 0),
@@ -223,6 +241,21 @@ function normalizeGame(game: Game | null): Game | null {
       ),
     })),
   };
+}
+
+function getThreePlayerSides(game: Game): Team[] {
+  const solo = game.teams[game.soloPlayer];
+  const pair = game.teams.filter((_, index) => index !== game.soloPlayer);
+  return [
+    { name: solo.name, players: "Pozzetto da 18 · gioca da solo" },
+    { name: "Coppia", players: `${pair[0].name} + ${pair[1].name} · pozzetto da 11` },
+  ];
+}
+
+function distributeThreePlayerScores(game: Game, sideScores: number[]) {
+  return game.teams.map((_, index) =>
+    index === game.soloPlayer ? (sideScores[0] ?? 0) : (sideScores[1] ?? 0) / 2,
+  );
 }
 
 function getGameTotals(game: Game): number[] {
@@ -281,7 +314,7 @@ function downloadGameSummary(game: Game) {
     month: "long",
     year: "numeric",
   }).format(new Date(game.createdAt));
-  context.fillText(`${date} · ${game.mode} · obiettivo ${formatScore(game.target)}`, 70, 158);
+  context.fillText(`${date} · ${modeLabel(game.mode)} · obiettivo ${formatScore(game.target)}`, 70, 158);
   context.fillText(`${game.rounds.length} smazzate`, 70, 205);
 
   const gap = 18;
@@ -326,7 +359,10 @@ function downloadGameSummary(game: Game) {
     }
     context.fillStyle = "#68776f";
     context.font = "600 19px system-ui, sans-serif";
-    context.fillText(`#${roundIndex + 1}`, 88, y);
+    const soloLabel = game.mode === "3p" && round.soloPlayer !== undefined
+      ? ` · ${game.teams[round.soloPlayer]?.name ?? ""} solo`
+      : "";
+    context.fillText(`#${roundIndex + 1}${soloLabel}`, 88, y);
     round.scores.forEach((score, index) => {
       context.fillStyle = "#17352c";
       context.font = "700 22px system-ui, sans-serif";
@@ -462,7 +498,7 @@ function Setup({
       <section className="setup-copy">
         <h1>Segnapunti Burraco</h1>
         <p className="setup-lede">
-          Inserisci le coppie e inizia una nuova partita.
+          Scegli la modalità, inserisci i nomi e inizia.
         </p>
       </section>
 
@@ -494,7 +530,7 @@ function Setup({
             {([
               ["1v1", "1 vs 1"],
               ["2v2", "2 vs 2"],
-              ["1v1v1", "1 vs 1 vs 1"],
+              ["3p", "3 giocatori"],
             ] as Array<[GameMode, string]>).map(([value, label]) => (
               <button
                 key={value}
@@ -507,6 +543,12 @@ function Setup({
             ))}
           </div>
         </fieldset>
+
+        {mode === "3p" && (
+          <p className="mode-note">
+            Pozzetti da 18 e 11: chi prende il primo gioca da solo, gli altri due in coppia.
+          </p>
+        )}
 
         <div className="team-setup-list">
           {teams.map((team, index) => (
@@ -814,7 +856,12 @@ function History({
                 key={round.id}
                 style={{ gridTemplateColumns: `0.55fr repeat(${game.teams.length}, 1fr)` }}
               >
-                <span>#{originalIndex + 1}</span>
+                <span>
+                  #{originalIndex + 1}
+                  {game.mode === "3p" && round.soloPlayer !== undefined && (
+                    <small>{game.teams[round.soloPlayer]?.name} solo</small>
+                  )}
+                </span>
                 {game.teams.map((_, index) => (
                   <span key={index}>
                     <strong>{round.scores[index] > 0 ? "+" : ""}{round.scores[index]}</strong>
@@ -887,7 +934,7 @@ function History({
   );
 }
 
-function Rules() {
+function Rules({ mode }: { mode: GameMode }) {
   return (
     <div className="rules-view">
       <section className="history-hero">
@@ -903,6 +950,19 @@ function Rules() {
           ))}
         </div>
       </section>
+
+      {mode === "3p" && (
+        <section className="rules-card three-player-rules">
+          <h3>Modalità a 3 · 18 + 11</h3>
+          <ol>
+            <li>Chi prende il pozzetto da 18 continua da solo.</li>
+            <li>Gli altri due formano la coppia e usano il pozzetto da 11.</li>
+            <li>La prima chiusura termina la smazzata.</li>
+            <li>Il punteggio del solo è intero; quello della coppia viene diviso a metà.</li>
+            <li>Si mantiene questa modalità fino al punteggio obiettivo.</li>
+          </ol>
+        </section>
+      )}
 
       <section className="rules-card">
         <h3>Formula della smazzata</h3>
@@ -947,6 +1007,7 @@ export default function Home() {
   const [savedMessage, setSavedMessage] = useState(false);
 
   useEffect(() => {
+    /* eslint-disable react-hooks/set-state-in-effect -- local storage is available only after hydration */
     setGame(normalizeGame(readJson<Game | null>(ACTIVE_GAME_KEY, null)));
     setArchive(
       readJson<Game[]>(ARCHIVE_KEY, [])
@@ -954,6 +1015,7 @@ export default function Home() {
         .filter((archivedGame): archivedGame is Game => archivedGame !== null),
     );
     setHydrated(true);
+    /* eslint-enable react-hooks/set-state-in-effect */
     if ("serviceWorker" in navigator) {
       navigator.serviceWorker.register("/sw.js").catch(() => undefined);
     }
@@ -1009,8 +1071,13 @@ export default function Home() {
     );
   }
 
-  const draftScores = game.draft.map(calculateScore);
-  const canSave = game.draft.some((breakdown) => !isBreakdownEmpty(breakdown));
+  const sideDraftScores = game.draft.map(calculateScore);
+  const draftScores = game.mode === "3p"
+    ? distributeThreePlayerScores(game, sideDraftScores)
+    : sideDraftScores;
+  const hasDraftData = game.draft.some((breakdown) => !isBreakdownEmpty(breakdown));
+  const hasThreePlayerClosure = game.draft.some((breakdown) => breakdown.closed);
+  const canSave = hasDraftData && (game.mode !== "3p" || hasThreePlayerClosure);
   const highestScore = Math.max(...totals);
   const leaders = totals
     .map((score, index) => ({ score, index }))
@@ -1021,7 +1088,17 @@ export default function Home() {
     if (!game) return;
     const draft = [...game.draft];
     draft[teamIndex] = breakdown;
+    if (game.mode === "3p" && breakdown.closed) {
+      const otherIndex = teamIndex === 0 ? 1 : 0;
+      draft[otherIndex] = { ...draft[otherIndex], closed: false };
+    }
     setGame({ ...game, draft });
+  }
+
+  function selectSoloPlayer(playerIndex: number) {
+    if (!game || game.mode !== "3p") return;
+    setGame({ ...game, soloPlayer: playerIndex });
+    setActiveTeam(0);
   }
 
   function saveRound() {
@@ -1031,11 +1108,16 @@ export default function Home() {
       createdAt: new Date().toISOString(),
       scores: draftScores,
       breakdowns: game.draft,
+      soloPlayer: game.mode === "3p" ? game.soloPlayer : undefined,
+      sideScores: game.mode === "3p" ? sideDraftScores : undefined,
     };
     setGame({
       ...game,
       rounds: [...game.rounds, round],
-      draft: game.teams.map(() => emptyBreakdown()),
+      draft: Array.from(
+        { length: game.mode === "3p" ? 2 : game.teams.length },
+        () => emptyBreakdown(),
+      ),
     });
     setActiveTeam(0);
     setSavedMessage(true);
@@ -1056,7 +1138,13 @@ export default function Home() {
       return;
     }
     if (!window.confirm("Archiviare questa partita e prepararne una nuova?")) return;
-    const finished = { ...game, draft: game.teams.map(() => emptyBreakdown()) };
+    const finished = {
+      ...game,
+      draft: Array.from(
+        { length: game.mode === "3p" ? 2 : game.teams.length },
+        () => emptyBreakdown(),
+      ),
+    };
     downloadGameSummary(finished);
     setArchive((current) => [finished, ...current].slice(0, 30));
     setGame(null);
@@ -1077,8 +1165,13 @@ export default function Home() {
         <Scoreboard
           game={game}
           totals={totals}
-          activeTeam={activeTeam}
+          activeTeam={game.mode === "3p" ? game.soloPlayer : activeTeam}
           onSelect={(team) => {
+            if (game.mode === "3p") {
+              selectSoloPlayer(team);
+              setTab("game");
+              return;
+            }
             setActiveTeam(team);
             setTab("game");
           }}
@@ -1103,11 +1196,56 @@ export default function Home() {
 
         {tab === "game" && (
           <>
+            {game.mode === "3p" && (
+              <section className="three-player-setup" aria-label="Ruoli della smazzata">
+                <div>
+                  <strong>Chi ha preso il pozzetto da 18?</strong>
+                  <small>Giocherà da solo per questa smazzata.</small>
+                </div>
+                <div className="solo-choice">
+                  {game.teams.map((player, index) => (
+                    <button
+                      type="button"
+                      className={game.soloPlayer === index ? "selected" : ""}
+                      aria-pressed={game.soloPlayer === index}
+                      onClick={() => selectSoloPlayer(index)}
+                      key={`${player.name}-${index}`}
+                    >
+                      {player.name}
+                    </button>
+                  ))}
+                </div>
+              </section>
+            )}
+
+            {game.mode === "3p" && (
+              <nav className="side-choice" aria-label="Conteggio solo o coppia">
+                {getThreePlayerSides(game).map((side, index) => (
+                  <button
+                    type="button"
+                    className={activeTeam === index ? "active" : ""}
+                    aria-pressed={activeTeam === index}
+                    onClick={() => setActiveTeam(index)}
+                    key={index}
+                  >
+                    <span>{index === 0 ? "Solo" : "Coppia"}</span>
+                    <strong>{index === 0 ? side.name : side.players.split(" · ")[0]}</strong>
+                  </button>
+                ))}
+              </nav>
+            )}
+
             <RoundEditor
-              team={game.teams[activeTeam]}
+              team={game.mode === "3p" ? getThreePlayerSides(game)[activeTeam] : game.teams[activeTeam]}
               breakdown={game.draft[activeTeam]}
               onChange={(breakdown) => updateDraft(activeTeam, breakdown)}
             />
+
+            {game.mode === "3p" && activeTeam === 1 && (
+              <p className="pair-split-note">
+                Parziale coppia: {formatScore(sideDraftScores[1])} · {formatScore(sideDraftScores[1] / 2)} punti a testa
+              </p>
+            )}
 
             <section
               className="round-recap"
@@ -1123,8 +1261,10 @@ export default function Home() {
 
             <div className="save-bar">
               <p>
-                <span aria-hidden="true">✓</span>
-                Bozza salvata automaticamente
+                <span aria-hidden="true">{game.mode === "3p" && !hasThreePlayerClosure ? "!" : "✓"}</span>
+                {game.mode === "3p" && !hasThreePlayerClosure
+                  ? "Indica chi ha chiuso per salvare"
+                  : "Bozza salvata automaticamente"}
               </p>
               <button type="button" className="primary-button" disabled={!canSave} onClick={saveRound}>
                 Salva smazzata <span aria-hidden="true">→</span>
@@ -1143,7 +1283,7 @@ export default function Home() {
           />
         )}
 
-        {tab === "rules" && <Rules />}
+        {tab === "rules" && <Rules mode={game.mode} />}
       </main>
 
       {savedMessage && (

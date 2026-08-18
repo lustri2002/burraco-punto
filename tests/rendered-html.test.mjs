@@ -47,9 +47,11 @@ test("ships the offline application manifest", async () => {
   assert.equal(manifest.lang, "it");
 });
 
-test("supports flexible tables and downloadable summaries", async () => {
+test("supports flexible tables, the 18 + 11 mode, and downloadable summaries", async () => {
   const page = await readFile(new URL("../app/page.tsx", import.meta.url), "utf8");
-  assert.match(page, /"1v1" \| "2v2" \| "1v1v1"/);
+  assert.match(page, /"1v1" \| "2v2" \| "3p"/);
+  assert.match(page, /Chi ha preso il pozzetto da 18/);
+  assert.match(page, /sideScores\[1\].*\/ 2/);
   assert.match(page, /Scarica riepilogo/);
   assert.match(page, /canvas\.toDataURL\("image\/png"\)/);
 });
