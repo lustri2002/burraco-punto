@@ -1,7 +1,7 @@
 {
-  "name": "Burraco Punto Online",
-  "short_name": "Burraco Online",
-  "description": "Partite di Burraco sincronizzate tra più telefoni.",
+  "name": "Burraco Punto",
+  "short_name": "Burraco Punto",
+  "description": "Segnapunti Burraco locale o condiviso tra più telefoni.",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#f4efe5",

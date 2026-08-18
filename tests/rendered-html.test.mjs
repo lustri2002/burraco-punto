@@ -2,34 +2,35 @@ import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import test from "node:test";
 
-test("renders the Burraco Punto Online application shell", async () => {
+test("renders the two-mode Burraco Punto application shell", async () => {
   const layout = await readFile(new URL("../app/layout.tsx", import.meta.url), "utf8");
   const page = await readFile(new URL("../app/page.tsx", import.meta.url), "utf8");
   const bundle = await readFile(new URL("../dist/server/index.js", import.meta.url), "utf8");
 
-  assert.match(layout, /title: "Burraco Punto Online"/);
+  assert.match(layout, /title: "Burraco Punto"/);
   assert.match(layout, /<html lang="it">/);
   assert.match(layout, /manifest: "\/manifest\.webmanifest"/);
-  assert.match(page, /Connessione alla partita/);
-  assert.match(page, /Crea una partita/);
-  assert.match(page, /Entra con il codice/);
+  assert.match(page, /href="\/offline"/);
+  assert.match(page, /Su questo telefono/);
+  assert.match(page, /href="\/online"/);
+  assert.match(page, /Partita condivisa/);
   assert.ok(bundle.length > 0);
   assert.doesNotMatch(page, /codex-preview|Your site is taking shape|SkeletonPreview/i);
 });
 
-test("ships the online installable application manifest", async () => {
+test("ships the combined installable application manifest", async () => {
   const manifest = JSON.parse(
     await readFile(new URL("../public/manifest.webmanifest", import.meta.url), "utf8"),
   );
 
-  assert.equal(manifest.name, "Burraco Punto Online");
+  assert.equal(manifest.name, "Burraco Punto");
   assert.equal(manifest.display, "standalone");
   assert.equal(manifest.start_url, "/");
   assert.equal(manifest.lang, "it");
 });
 
 test("keeps every supported table mode and configurable scoring rules", async () => {
-  const page = await readFile(new URL("../app/page.tsx", import.meta.url), "utf8");
+  const page = await readFile(new URL("../app/online/page.tsx", import.meta.url), "utf8");
   const game = await readFile(new URL("../lib/game.ts", import.meta.url), "utf8");
 
   assert.match(page, /\['1v1', '1 vs 1'\]/);
@@ -39,6 +40,19 @@ test("keeps every supported table mode and configurable scoring rules", async ()
   assert.match(page, /<details className="bonus-description">/);
   assert.match(game, /bonus\.key === "pulito" \|\| bonus\.key === "sporco"/);
   assert.match(game, /export function calculateScore/);
+});
+
+test("keeps the complete device-local mode alongside shared sessions", async () => {
+  const offline = await readFile(new URL("../app/offline/page.tsx", import.meta.url), "utf8");
+  const online = await readFile(new URL("../app/online/page.tsx", import.meta.url), "utf8");
+
+  assert.match(offline, /burraco-punto-active-v1/);
+  assert.match(offline, /burraco-punto-archive-v1/);
+  assert.match(offline, /navigator\.serviceWorker\.register\("\/sw\.js"\)/);
+  assert.match(offline, /Scarica riepilogo/);
+  assert.match(offline, /canvas\.toDataURL\("image\/png"\)/);
+  assert.match(online, /burraco-punto-online-session-v1/);
+  assert.match(online, /window\.location\.origin}\/online\?join=/);
 });
 
 test("implements protected shared sessions and server-side confirmation", async () => {

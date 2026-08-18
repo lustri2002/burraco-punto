@@ -2,15 +2,15 @@ import type { Metadata, Viewport } from "next";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "Burraco Punto Online",
+  title: "Burraco Punto",
   description:
-    "Crea una sessione di Burraco, invita gli amici e sincronizza i punteggi tra più telefoni.",
-  applicationName: "Burraco Punto Online",
+    "Segnapunti Burraco locale o condiviso tra più telefoni.",
+  applicationName: "Burraco Punto",
   manifest: "/manifest.webmanifest",
   appleWebApp: {
     capable: true,
     statusBarStyle: "black-translucent",
-    title: "Burraco Online",
+    title: "Burraco Punto",
   },
   formatDetection: { telephone: false },
 };
