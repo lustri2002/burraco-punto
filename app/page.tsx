@@ -291,7 +291,10 @@ function downloadGameSummary(game: Game) {
   const totals = getGameTotals(game);
   const width = 1080;
   const rowHeight = 62;
-  const height = Math.max(1350, 650 + game.rounds.length * rowHeight);
+  const tableTop = 580;
+  const firstRoundBaseline = tableTop + 92;
+  const lastRoundBaseline = firstRoundBaseline + Math.max(0, game.rounds.length - 1) * rowHeight;
+  const height = Math.max(1350, lastRoundBaseline + 150);
   const canvas = document.createElement("canvas");
   canvas.width = width;
   canvas.height = height;
@@ -337,22 +340,25 @@ function downloadGameSummary(game: Game) {
     context.fillText(formatScore(totals[index]), x + 24, 475, cardWidth - 48);
   });
 
-  const top = 580;
   const labelWidth = 130;
   const scoreWidth = (width - 140 - labelWidth) / game.teams.length;
   context.fillStyle = "#17352c";
   context.font = "700 30px system-ui, sans-serif";
-  context.fillText("Smazzate", 70, top - 24);
+  context.fillText("Smazzate", 70, tableTop - 24);
   context.font = "700 18px system-ui, sans-serif";
   context.fillStyle = "#68776f";
   game.teams.forEach((team, index) => {
     context.textAlign = "right";
-    context.fillText(team.name.slice(0, 14), 70 + labelWidth + scoreWidth * (index + 1) - 10, top + 22);
+    context.fillText(
+      team.name.slice(0, 14),
+      70 + labelWidth + scoreWidth * (index + 1) - 10,
+      tableTop + 22,
+    );
   });
   context.textAlign = "left";
 
   game.rounds.forEach((round, roundIndex) => {
-    const y = top + 48 + roundIndex * rowHeight;
+    const y = firstRoundBaseline + roundIndex * rowHeight;
     if (roundIndex % 2 === 0) {
       context.fillStyle = "#ebe5da";
       drawRoundedRect(context, 70, y - 35, width - 140, 52, 10);

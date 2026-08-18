@@ -52,6 +52,7 @@ test("supports flexible tables, the 18 + 11 mode, and downloadable summaries", a
   assert.match(page, /"1v1" \| "2v2" \| "3p"/);
   assert.match(page, /Chi ha preso il pozzetto da 18/);
   assert.match(page, /sideScores\[1\].*\/ 2/);
+  assert.match(page, /firstRoundBaseline = tableTop \+ 92/);
   assert.match(page, /Scarica riepilogo/);
   assert.match(page, /canvas\.toDataURL\("image\/png"\)/);
 });
