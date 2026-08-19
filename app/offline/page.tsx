@@ -397,7 +397,7 @@ function downloadGameSummary(game: Game) {
   context.fillRect(0, 0, width, 250);
   context.fillStyle = "#ffffff";
   context.font = "700 58px system-ui, sans-serif";
-  context.fillText("Segnapunti Burraco", 70, 100);
+  context.fillText("Punti Burraco", 70, 100);
   context.font = "400 28px system-ui, sans-serif";
   context.fillStyle = "rgba(255,255,255,.72)";
   const date = new Intl.DateTimeFormat("it-IT", {
@@ -472,7 +472,7 @@ function downloadGameSummary(game: Game) {
 
   context.fillStyle = "#68776f";
   context.font = "400 18px system-ui, sans-serif";
-  context.fillText("Generato con Segnapunti Burraco", 70, height - 60);
+  context.fillText("Generato con Punti Burraco", 70, height - 60);
 
   const link = document.createElement("a");
   link.href = canvas.toDataURL("image/png");
@@ -591,7 +591,7 @@ function Setup({
   return (
     <main className="setup-shell">
       <section className="setup-copy">
-        <h1>Segnapunti Burraco</h1>
+        <h1>Punti Burraco</h1>
         <p className="setup-lede">
           Scegli la modalità, inserisci i nomi e inizia.
         </p>
@@ -1214,9 +1214,9 @@ export default function Home() {
     return (
       <>
         <header className="landing-header">
-          <a className="brand" href="#top" aria-label="Segnapunti Burraco, home">
+          <a className="brand" href="#top" aria-label="Punti Burraco, home">
             <span className="brand-mark" aria-hidden="true">B</span>
-            <span>Segnapunti Burraco</span>
+            <span>Punti Burraco</span>
           </a>
         </header>
         <Setup
@@ -1316,9 +1316,9 @@ export default function Home() {
   return (
     <div className="app-shell">
       <header className="app-header">
-        <a className="brand" href="#top" aria-label="Segnapunti Burraco, torna in alto">
+        <a className="brand" href="#top" aria-label="Punti Burraco, torna in alto">
           <span className="brand-mark" aria-hidden="true">B</span>
-          <span>Segnapunti Burraco</span>
+          <span>Punti Burraco</span>
         </a>
         <span className="round-pill">Smazzata {game.rounds.length + 1}</span>
       </header>
@@ -1451,4 +1451,3 @@ export default function Home() {
     </div>
   );
 }
-

@@ -1,4 +1,4 @@
-const CACHE_NAME = "burraco-punto-v2";
+const CACHE_NAME = "punti-burraco-v3";
 const APP_SHELL = ["/", "/offline", "/online", "/manifest.webmanifest"];
 
 self.addEventListener("install", (event) => {

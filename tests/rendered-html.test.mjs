@@ -2,12 +2,12 @@ import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import test from "node:test";
 
-test("renders the two-mode Burraco Punto application shell", async () => {
+test("renders the two-mode Punti Burraco application shell", async () => {
   const layout = await readFile(new URL("../app/layout.tsx", import.meta.url), "utf8");
   const page = await readFile(new URL("../app/page.tsx", import.meta.url), "utf8");
   const bundle = await readFile(new URL("../dist/server/index.js", import.meta.url), "utf8");
 
-  assert.match(layout, /title: "Burraco Punto"/);
+  assert.match(layout, /title: "Punti Burraco"/);
   assert.match(layout, /<html lang="it">/);
   assert.match(layout, /manifest: "\/manifest\.webmanifest"/);
   assert.match(page, /href="\/offline"/);
@@ -23,7 +23,7 @@ test("ships the combined installable application manifest", async () => {
     await readFile(new URL("../public/manifest.webmanifest", import.meta.url), "utf8"),
   );
 
-  assert.equal(manifest.name, "Burraco Punto");
+  assert.equal(manifest.name, "Punti Burraco");
   assert.equal(manifest.display, "standalone");
   assert.equal(manifest.start_url, "/");
   assert.equal(manifest.lang, "it");

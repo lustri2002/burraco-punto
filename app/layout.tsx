@@ -2,15 +2,15 @@ import type { Metadata, Viewport } from "next";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "Burraco Punto",
+  title: "Punti Burraco",
   description:
     "Segnapunti Burraco locale o condiviso tra più telefoni.",
-  applicationName: "Burraco Punto",
+  applicationName: "Punti Burraco",
   manifest: "/manifest.webmanifest",
   appleWebApp: {
     capable: true,
     statusBarStyle: "black-translucent",
-    title: "Burraco Punto",
+    title: "Punti Burraco",
   },
   formatDetection: { telephone: false },
 };

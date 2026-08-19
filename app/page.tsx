@@ -6,13 +6,13 @@ export default function ModeHome() {
       <header className="landing-header">
         <a className="brand" href="#top">
           <span className="brand-mark">B</span>
-          <span>Burraco Punto</span>
+          <span>Punti Burraco</span>
         </a>
       </header>
 
       <main className="mode-home">
         <section className="mode-intro">
-          <p className="eyebrow">Segnapunti Burraco</p>
+          <p className="eyebrow">Punti Burraco</p>
           <h1>Come volete giocare?</h1>
           <p>Scegliete dove inserire i punti. Regole e calcolo restano gli stessi.</p>
         </section>

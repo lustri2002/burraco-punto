@@ -480,7 +480,7 @@ function Lobby({ session, token, onUpdate, onLeave }: {
 function SessionHeading({ session, onLeave }: { session: SessionSnapshot; onLeave: () => void }) {
   return (
     <header className="session-heading">
-      <div><a className="brand" href="#top"><span className="brand-mark">B</span><span>Burraco Online</span></a><small>{modeLabel(session.mode)} · codice {session.code}</small></div>
+      <div><a className="brand" href="#top"><span className="brand-mark">B</span><span>Punti Burraco</span></a><small>{modeLabel(session.mode)} · codice {session.code}</small></div>
       <button type="button" onClick={onLeave}>Esci</button>
     </header>
   );
@@ -665,7 +665,7 @@ export default function Home() {
 
   return (
     <>
-      <header className="landing-header"><a className="brand" href="#top"><span className="brand-mark">B</span><span>Burraco Online</span></a><span className="online-badge">multi-dispositivo</span></header>
+      <header className="landing-header"><a className="brand" href="#top"><span className="brand-mark">B</span><span>Punti Burraco</span></a><span className="online-badge">multi-dispositivo</span></header>
       <main className="online-home" id="top">
         <section className="online-hero"><p className="eyebrow">Partita condivisa</p><h1>Ognuno conta dal proprio telefono.</h1><p>Create una sessione, entrate con il codice e confermate insieme ogni smazzata.</p></section>
         <section className="entry-grid">
@@ -677,4 +677,3 @@ export default function Home() {
     </>
   );
 }
-
